@@ -1,0 +1,18 @@
+{
+  "square_meters": {
+    "low_limit": "f26",
+    "upper_limit": "f27"
+  },
+  "price": {
+    "low_limit": "f28",
+    "upper_limit": "f29"
+  },
+  "price_per_square_meter": {
+    "low_limit": "f43",
+    "upper_limit": "f44"
+  },
+  "searched_keyword": "f42",
+  "sort_order": "f41",
+  "all_regions": "ri",
+  "regions_to_search_for": "rs"
+}
