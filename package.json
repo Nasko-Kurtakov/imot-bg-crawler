@@ -6,7 +6,7 @@
   "scripts": {
     "test-debug": "playwright test --ui --project chromium",
     "test": "playwright test",
-    "crawl": "node src/crawler.js"
+    "crawl": "ts-node src/crawler.ts"
   },
   "dependencies": {
     "@playwright/test": "^1.54.2",

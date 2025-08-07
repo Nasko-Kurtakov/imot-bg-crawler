@@ -5,16 +5,19 @@ A Playwright-based web crawler for finding new real estate listings published to
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Configure your target website in `.env` file:
+
 ```
-TARGET_URL=https://your-target-website.com
+TARGET_URL=https://www.imot.bg/search/prodazhbi/grad-sofiya
 ```
 
 3. Run the crawler:
+
 ```bash
 npm run crawl
 ```
@@ -28,7 +31,7 @@ npm run crawl
 
 ## Requirements
 
-- Node.js 16+
+- Node.js 18+
 - npm
 - Playwright
 
