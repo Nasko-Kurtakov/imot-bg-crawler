@@ -52,10 +52,10 @@ import { Listing } from '../crawl.service';
         color: inherit;
       }
       .row {
-        display: grid;
-        grid-template-columns: 96px 1fr;
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
         gap: 0.75rem;
-        align-items: start;
       }
       .thumb {
         width: 96px;
@@ -63,6 +63,10 @@ import { Listing } from '../crawl.service';
         object-fit: cover;
         border-radius: 6px;
         background: #f5f5f5;
+      }
+      .content {
+        flex: 1 1 auto;
+        min-width: 0;
       }
       .title {
         font-weight: 600;

@@ -23,8 +23,8 @@ import { ListingItemComponent } from './listing-item.component';
   styles: [
     `
       .results-list {
-        display: grid;
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
         gap: 0.75rem;
       }
     `,
