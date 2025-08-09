@@ -11,30 +11,6 @@ const TODAY = moment().format("YYYY-MM-DD");
 const searchCriteria = require("../search.json");
 const imotBgFields = require("../imot-bg-fields.json");
 
-async function extractListingInfo(listingElement: any) {
-  try {
-    // Extract listing details
-    const title = await listingElement.textContent("h2, .title");
-    const price = await listingElement.textContent(".price");
-    const location = await listingElement.textContent(".location");
-    const date = await listingElement.textContent(".date");
-
-    // Check if listing is new today
-    if (date && moment(date).isSame(TODAY, "day")) {
-      return {
-        title: title.trim(),
-        price: price.trim(),
-        location: location.trim(),
-        date: date.trim(),
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error("Error extracting listing info:", error);
-    return null;
-  }
-}
-
 async function launch() {
   try {
     // Launch browser
@@ -60,8 +36,25 @@ async function launch() {
     }
     await page.waitForTimeout(5000); // waits 5 seconds which should be enough for the page with results to load
 
-    //process listings
-    await processListings(page);
+    //for each page of the pages
+
+    const totalPagesSelector = await page.$$(
+      ".pagination a.saveSlink:not(.next):not(.prev)"
+    );
+    const totalPages = new Array(...totalPagesSelector).slice(
+      totalPagesSelector.length / 2
+    );
+    console.log("Total pages: ", totalPages.length + 1);
+    const totalPagesCount = totalPages.length;
+
+    let i = 0;
+    do {
+      console.log("Processing page: ", i + 1);
+      await processListings(page);
+      await navigateToPage(page, i);
+      await page.waitForTimeout(1000); // waits 1 second which should be enough for the page with results to load
+      i++;
+    } while (i < totalPagesCount);
 
     await page.close();
     await context.close();
@@ -150,6 +143,7 @@ async function selectRegions(page: Page) {
 }
 
 async function processListings(page: Page) {
+  console.log("Processing listings");
   try {
     // Get all listing URLs upfront to avoid stale element references
     const handles = await page.$$(".ads2023 .zaglavie a.title.saveSlink");
@@ -302,6 +296,24 @@ function parseBulgarianDate(dateStr: string): Date | null {
   const month = bgMonths.indexOf(monthBg);
   if (month === -1) return null;
   return new Date(year, month, day);
+}
+
+async function navigateToPage(page: Page, pageNumber: number) {
+  const totalPagesSelector = await page.$$(
+    ".pagination a.saveSlink:not(.next):not(.prev)"
+  );
+  const totalPages = new Array(...totalPagesSelector).slice(
+    totalPagesSelector.length / 2
+  );
+  console.log(
+    "going to page: " + pageNumber + 2,
+    " of ",
+    totalPages.length + 1
+  );
+  const nextPage = totalPages[pageNumber];
+  if (nextPage) {
+    await nextPage.click();
+  }
 }
 
 // Run the crawler
