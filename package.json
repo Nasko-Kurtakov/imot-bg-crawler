@@ -6,17 +6,21 @@
   "scripts": {
     "test-debug": "playwright test --ui --project chromium",
     "test": "playwright test",
-    "crawl": "ts-node src/crawler.ts"
+    "crawl": "ts-node -e \"(async()=>{const {runCrawler}=await import('./src/crawler');const criteria=require('./search.json');await runCrawler(criteria,{headless:false});})();\"",
+    "server": "ts-node src/server.ts"
   },
   "dependencies": {
     "@playwright/test": "^1.54.2",
     "dotenv": "^16.3.1",
     "moment": "^2.29.4",
     "playwright": "^1.40.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "express": "^4.19.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
+    "@types/express": "^4.17.21",
     "typescript": "^5.9.2"
   }
 }

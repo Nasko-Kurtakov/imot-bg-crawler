@@ -7,15 +7,30 @@ import "dotenv/config";
 const TARGET_URL = process.env.TARGET_URL || "https://www.imot.bg";
 const TODAY = moment().format("YYYY-MM-DD");
 
-//Here we fill in the form with the search criteria
-const searchCriteria = require("../search.json");
+// Here we fill in the form with the search criteria mapping
 const imotBgFields = require("../imot-bg-fields.json");
 
-async function launch() {
+export type SearchCriteria = {
+  property_type: string;
+  area_sqm: { min: string; max: string };
+  price: { min: string; max: string };
+  sort_order: string; // matches site select values
+  keywords: string[];
+  regions: string[];
+};
+
+export type CrawlerOptions = {
+  headless?: boolean;
+};
+
+export async function runCrawler(
+  searchCriteria: SearchCriteria,
+  options: CrawlerOptions = {}
+) {
   try {
     // Launch browser
     const browser = await chromium.launch({
-      headless: false,
+      headless: options.headless ?? true,
     });
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -27,7 +42,7 @@ async function launch() {
     await page.waitForSelector("#cookiescript_accept");
     await page.click("#cookiescript_accept");
 
-    await setUpListingCriteria(page);
+    await setUpListingCriteria(page, searchCriteria);
 
     //click on search button
     const searchButton = await page.$(`input[value="Т Ъ Р С И"]`);
@@ -50,7 +65,7 @@ async function launch() {
     let i = 0;
     do {
       console.log("Processing page: ", i + 1);
-      await processListings(page);
+      await processListings(page, searchCriteria);
       await navigateToPage(page, i);
       await page.waitForTimeout(1000); // waits 1 second which should be enough for the page with results to load
       i++;
@@ -61,10 +76,14 @@ async function launch() {
     await browser.close();
   } catch (error) {
     console.error("Error in main:", error);
+    throw error;
   }
 }
 
-async function setUpListingCriteria(page: Page) {
+async function setUpListingCriteria(
+  page: Page,
+  searchCriteria: SearchCriteria
+) {
   try {
     //Fill in the form
 
@@ -105,7 +124,7 @@ async function setUpListingCriteria(page: Page) {
     }
 
     //set up inputs for regions
-    await selectRegions(page);
+    await selectRegions(page, searchCriteria);
 
     //set up sorting
     const sortingInput = await page.$(
@@ -119,7 +138,7 @@ async function setUpListingCriteria(page: Page) {
   }
 }
 
-async function selectRegions(page: Page) {
+async function selectRegions(page: Page, searchCriteria: SearchCriteria) {
   try {
     const regionsTargetInput = await page.$(
       `select[name=${imotBgFields.regions_to_search_for}]`
@@ -142,7 +161,7 @@ async function selectRegions(page: Page) {
   }
 }
 
-async function processListings(page: Page) {
+async function processListings(page: Page, searchCriteria: SearchCriteria) {
   console.log("Processing listings");
   try {
     // Get all listing URLs upfront to avoid stale element references
@@ -162,7 +181,7 @@ async function processListings(page: Page) {
     console.log(`Found ${listingUrls.length} listing URLs on the page.`);
 
     // Process each listing URL sequentially
-    for (let i = 0; i < listingUrls.length; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         const url = listingUrls[i];
         if (!url) {
@@ -179,7 +198,7 @@ async function processListings(page: Page) {
 
         // const title = await page.$$("h1.obTitle");
 
-        checkListingInfo(page);
+        await checkListingInfo(page);
 
         // Wait 2 seconds on the listing page
         await page.waitForTimeout(2000);
@@ -305,16 +324,9 @@ async function navigateToPage(page: Page, pageNumber: number) {
   const totalPages = new Array(...totalPagesSelector).slice(
     totalPagesSelector.length / 2
   );
-  console.log(
-    "going to page: " + pageNumber + 2,
-    " of ",
-    totalPages.length + 1
-  );
+  console.log("going to page: ", pageNumber + 2, " of ", totalPages.length + 1);
   const nextPage = totalPages[pageNumber];
   if (nextPage) {
     await nextPage.click();
   }
 }
-
-// Run the crawler
-launch();
