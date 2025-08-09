@@ -6,6 +6,8 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSelectModule } from '@angular/material/select';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'ads-overview',
@@ -16,6 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatSelectModule,
     ListingListComponent,
   ],
   template: `
@@ -88,12 +91,12 @@ import { MatButtonModule } from '@angular/material/button';
         </div>
         <div class="row grow">
           <mat-form-field class="full" appearance="fill">
-            <mat-label>Regions (comma separated)</mat-label>
-            <input
-              matInput
-              formControlName="regions"
-              placeholder="Стрелбище, Иван Вазов, Белите Брези"
-            />
+            <mat-label>Regions</mat-label>
+            <mat-select formControlName="regions" multiple>
+              @for (r of regionOptions; track r) {
+              <mat-option [value]="r">{{ r }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
         </div>
 
@@ -106,15 +109,12 @@ import { MatButtonModule } from '@angular/material/button';
           {{ loading() ? 'Running…' : 'Run Crawl' }}
         </button>
       </form>
-
-      <div class="card" *ngIf="error()">
-        <strong>Error:</strong> {{ error() }}
-      </div>
-
-      <div class="card" *ngIf="!error()">
-        <div><strong>Total:</strong> {{ count() }}</div>
-        <ads-list [items]="results()"></ads-list>
-      </div>
+      @if (error()) {
+      <div class="card"><strong>Error:</strong> {{ error() }}</div>
+      } @if (!error()) {
+      <div><strong>Total:</strong> {{ count() }}</div>
+      <ads-list [items]="results()"></ads-list>
+      }
     </div>
   `,
   styles: [
@@ -123,6 +123,15 @@ import { MatButtonModule } from '@angular/material/button';
         max-width: 900px;
         margin: 1rem auto;
         padding: 1rem;
+        font-size: 0.9rem;
+      }
+      .container h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.25rem;
+      }
+      .container p {
+        margin: 0 0 0.5rem;
+        font-size: 0.55em;
       }
       .card {
         margin-top: 1rem;
@@ -153,6 +162,7 @@ import { MatButtonModule } from '@angular/material/button';
 export class AdsOverviewComponent implements OnInit {
   private readonly store = inject(ListingsStore);
   private readonly fb = inject(FormBuilder);
+  private readonly http = inject(HttpClient);
 
   // Reuse store signals so template stays the same
   loading = this.store.loading;
@@ -168,13 +178,43 @@ export class AdsOverviewComponent implements OnInit {
     area_min: this.fb.nonNullable.control('90'),
     area_max: this.fb.nonNullable.control('170'),
     keywords: this.fb.nonNullable.control('гараж'),
-    regions: this.fb.nonNullable.control(
-      'Стрелбище, Иван Вазов, Белите Брези, Манастирски ливади, Кръстова вада, Лозенец, Хиподрума'
-    ),
+    regions: this.fb.nonNullable.control<string[]>([]),
   });
 
+  regionOptions: string[] = [];
+
   ngOnInit(): void {
-    console.log('ngOnInit');
+    // Restore previously selected regions from localStorage (if any)
+    try {
+      const raw = localStorage.getItem('lastSelectedRegions');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.every((x) => typeof x === 'string')) {
+          this.form.controls.regions.setValue(arr as string[], {
+            emitEvent: false,
+          });
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    this.http
+      .get<Record<string, Record<string, string>>>('/data/imot-bg-regions.json')
+      .subscribe({
+        next: (data) => {
+          const opts: string[] = [];
+          for (const inner of Object.values(data)) {
+            for (const name of Object.keys(inner)) {
+              opts.push(name);
+            }
+          }
+          this.regionOptions = opts.sort((a, b) => a.localeCompare(b));
+        },
+        error: (err) => {
+          console.error('Failed to load regions JSON', err);
+        },
+      });
   }
 
   private csvToArray(v: string): string[] | undefined {
@@ -204,8 +244,19 @@ export class AdsOverviewComponent implements OnInit {
         max: this.valOrUndef(v.area_max),
       },
       keywords: this.csvToArray(v.keywords),
-      regions: this.csvToArray(v.regions),
+      regions: v.regions && v.regions.length ? v.regions : undefined,
     } as const;
+
+    // Persist selected regions for usability
+    try {
+      if (v.regions && v.regions.length) {
+        localStorage.setItem('lastSelectedRegions', JSON.stringify(v.regions));
+      } else {
+        localStorage.removeItem('lastSelectedRegions');
+      }
+    } catch {
+      // Storage may be unavailable; ignore
+    }
     this.store.runCrawl(criteria);
   }
 }

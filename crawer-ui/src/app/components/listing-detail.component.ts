@@ -9,30 +9,29 @@ import { Listing } from '../crawl.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="detail" *ngIf="listing(); else missing">
+    @if (listing()) {
+    <div class="detail">
       <button class="back" (click)="goBack()">← Back</button>
       <h2>{{ listing()!.title }}</h2>
       <div class="meta">
         {{ listing()!.location }} • {{ listing()!.price }} •
         {{ listing()!.date }}
       </div>
-      <img
-        *ngIf="listing()!.imgLink"
-        [src]="listing()!.imgLink"
-        alt="Listing image"
-      />
-      <p class="desc">{{ listing()!.description }}</p>
+      @if (listing()?.imgLink) {
+      <img [src]="listing()?.imgLink" alt="Listing image" />
+      }
+      <p class="desc">{{ listing()?.description }}</p>
       <p>
-        <a class="open" [href]="listing()!.link" target="_blank" rel="noopener"
+        <a class="open" [href]="listing()?.link" target="_blank" rel="noopener"
           >Open on imot.bg</a
         >
       </p>
     </div>
-    <ng-template #missing>
-      <div class="missing">
-        Listing data is not available. Please navigate from the list.
-      </div>
-    </ng-template>
+    } @else {
+    <div class="missing">
+      Listing data is not available. Please navigate from the list.
+    </div>
+    }
   `,
   styles: [
     `

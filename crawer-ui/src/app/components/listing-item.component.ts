@@ -10,13 +10,16 @@ import { Listing } from '../crawl.service';
   template: `
     <a class="item" [routerLink]="['/listing']" [state]="{ listing }">
       <div class="row">
+        @if (listing.imgLink) {
         <img
-          *ngIf="listing.imgLink"
           class="thumb"
           [src]="listing.imgLink"
           alt="Listing image"
           loading="lazy"
         />
+        } @else {
+        <div class="thumb placeholder"></div>
+        }
         <div class="content">
           <div class="title">{{ listing.title }}</div>
           <div class="meta">
