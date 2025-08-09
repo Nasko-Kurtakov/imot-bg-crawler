@@ -1,7 +1,10 @@
 import { chromium, Page } from "playwright";
 import moment from "moment";
-import { appendTitleToCsv } from "./utils/writeToCsv";
+import { appendTitleToCsv, initializeCsv } from "./utils/writeToCsv";
+import { normalizeListing } from "./utils/normalize";
 import "dotenv/config";
+import { promises as fs } from "fs";
+import * as path from "path";
 
 // Configuration
 const TARGET_URL = process.env.TARGET_URL || "https://www.imot.bg";
@@ -21,6 +24,7 @@ export type SearchCriteria = {
 
 export type CrawlerOptions = {
   headless?: boolean;
+  saveCsv?: boolean; // default false; if true, also append CSV
 };
 
 export async function runCrawler(
@@ -28,6 +32,16 @@ export async function runCrawler(
   options: CrawlerOptions = {}
 ) {
   try {
+    const results: Array<{
+      title: string;
+      price: string;
+      location: string;
+      date: string;
+      link: string;
+      imgLink: string;
+      description: string;
+    }> = [];
+
     // Launch browser
     const browser = await chromium.launch({
       headless: options.headless ?? true,
@@ -62,10 +76,16 @@ export async function runCrawler(
     console.log("Total pages: ", totalPages.length + 1);
     const totalPagesCount = totalPages.length;
 
+    // initialize CSV only if enabled
+    const saveCsv = options.saveCsv === true;
+    if (saveCsv) {
+      await initializeCsv();
+    }
+
     let i = 0;
     do {
       console.log("Processing page: ", i + 1);
-      await processListings(page, searchCriteria);
+      await processListings(page, searchCriteria, results, saveCsv);
       await navigateToPage(page, i);
       await page.waitForTimeout(1000); // waits 1 second which should be enough for the page with results to load
       i++;
@@ -74,6 +94,15 @@ export async function runCrawler(
     await page.close();
     await context.close();
     await browser.close();
+
+    // Write JSON results file
+    const jsonPath = path.join(__dirname, "..", "..", "recent_ads.json");
+    await fs.writeFile(jsonPath, JSON.stringify(results, null, 2), "utf8");
+    console.log(
+      `Finished processing all pages. Found ${results.length} listings.`
+    );
+
+    return results;
   } catch (error) {
     console.error("Error in main:", error);
     throw error;
@@ -161,10 +190,22 @@ async function selectRegions(page: Page, searchCriteria: SearchCriteria) {
   }
 }
 
-async function processListings(page: Page, searchCriteria: SearchCriteria) {
-  console.log("Processing listings");
+async function processListings(
+  page: Page,
+  _searchCriteria: SearchCriteria,
+  results: Array<{
+    title: string;
+    price: string;
+    location: string;
+    date: string;
+    link: string;
+    imgLink: string;
+    description: string;
+  }>,
+  saveCsv: boolean
+) {
   try {
-    // Get all listing URLs upfront to avoid stale element references
+    console.log("Processing listings");
     const handles = await page.$$(".ads2023 .zaglavie a.title.saveSlink");
     const listingUrls = await Promise.all(
       handles.map(async (el) => {
@@ -196,9 +237,10 @@ async function processListings(page: Page, searchCriteria: SearchCriteria) {
         // Navigate directly to the listing URL
         await page.goto(url);
 
-        // const title = await page.$$("h1.obTitle");
-
-        await checkListingInfo(page);
+        const listing = await checkListingInfo(page, saveCsv);
+        if (listing) {
+          results.push(normalizeListing(listing));
+        }
 
         // Wait 2 seconds on the listing page
         await page.waitForTimeout(2000);
@@ -222,9 +264,15 @@ async function processListings(page: Page, searchCriteria: SearchCriteria) {
   }
 }
 
-// Extract all listing info needed for CSV and write it
-async function extractAndWriteListing(page: Page) {
+// Extract all listing info needed for result and write it
+async function extractAndWriteListing(page: Page, saveCsv: boolean) {
   try {
+    //expand the description if it can
+    const seeMoreBtn = await page.$("a#dots_link_more");
+    if (seeMoreBtn) {
+      await seeMoreBtn.click();
+    }
+
     const titleEls = await page.$$("h1.obTitle");
     const dateEls = await page.$$(".adPrice .info div");
     const priceEls = await page.$$(".Price");
@@ -250,7 +298,7 @@ async function extractAndWriteListing(page: Page) {
     const ogImg =
       (await page.getAttribute('meta[property="og:image"]', "content")) || "";
 
-    await appendTitleToCsv({
+    const listing = {
       title,
       price,
       location,
@@ -258,14 +306,23 @@ async function extractAndWriteListing(page: Page) {
       link: page.url(),
       imgLink: ogImg,
       description,
-    });
-    console.log(`Title written to CSV: ${title}`);
+    };
+
+    if (saveCsv) {
+      await appendTitleToCsv(
+        normalizeListing(listing, { includeEurSuffix: true })
+      );
+      console.log(`Title written to CSV: ${title}`);
+    }
+
+    return normalizeListing(listing);
   } catch (err) {
     console.error("Error extracting/writing listing info:", err);
+    return null;
   }
 }
 
-async function checkListingInfo(page: Page) {
+async function checkListingInfo(page: Page, saveCsv: boolean) {
   try {
     console.log("Checking listing info");
     const dateEls = await page.$$(".adPrice .info div");
@@ -282,12 +339,13 @@ async function checkListingInfo(page: Page) {
       const diffMs = NOW.getTime() - parsedDate.getTime();
       const diffDays = diffMs / (1000 * 60 * 60 * 24);
       if (diffDays <= 2 && diffDays >= 0) {
-        await extractAndWriteListing(page);
+        return await extractAndWriteListing(page, saveCsv);
       }
     }
   } catch (error) {
     console.error("Error checking listing info:", error);
   }
+  return null;
 }
 // Utility to parse Bulgarian date strings like "Коригирана в 16:02 на 15 юли, 2025 год."
 function parseBulgarianDate(dateStr: string): Date | null {
@@ -324,7 +382,7 @@ async function navigateToPage(page: Page, pageNumber: number) {
   const totalPages = new Array(...totalPagesSelector).slice(
     totalPagesSelector.length / 2
   );
-  console.log("going to page: ", pageNumber + 2, " of ", totalPages.length + 1);
+  // console.log("going to page: ", pageNumber + 2, " of ", totalPages.length + 1);
   const nextPage = totalPages[pageNumber];
   if (nextPage) {
     await nextPage.click();

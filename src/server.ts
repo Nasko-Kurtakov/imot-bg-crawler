@@ -25,12 +25,14 @@ app.post("/crawl", async (req: Request, res: Response) => {
     const optionsParsed = optionsSchema.parse(req.body.options ?? {});
 
     // Run synchronously: request will take as long as the crawl runs
-    await runCrawler(
+    // CSV output is DISABLED by default for FR9; can be re-enabled via options if needed
+    const results = await runCrawler(
       criteriaParsed as SearchCriteria,
-      optionsParsed as CrawlerOptions
+      { headless: optionsParsed.headless ?? true, saveCsv: false } as CrawlerOptions
     );
 
-    res.status(200).json({ message: "Crawl completed", csv: "recent_ads.csv" });
+    // Return JSON results (also saved to recent_ads.json by the crawler)
+    res.status(200).json({ message: "Crawl completed", count: results.length, results });
   } catch (err: any) {
     if (err?.name === "ZodError") {
       return res

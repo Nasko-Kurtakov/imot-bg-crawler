@@ -65,6 +65,7 @@ The automation is intended to run daily and produce a list of fresh listings, sa
 | FR6 | Extract title, price, location, date, and link                               |
 | FR7 | Export listings to a JSON or CSV file                                        |
 | FR8 | Create a node js server that accepts a post request with the search criteria |
+| FR9 | On request return a json with the results                                    |
 
 ---
 
