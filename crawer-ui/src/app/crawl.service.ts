@@ -18,32 +18,22 @@ export interface CrawlResponse {
   results: Listing[];
 }
 
+export interface Criteria {
+  property_type?: string;
+  area_sqm?: { min?: string; max?: string };
+  price?: { min?: string; max?: string };
+  sort_order?: string;
+  keywords?: string[];
+  regions?: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CrawlService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/crawl';
 
-  runCrawl(): Observable<CrawlResponse> {
-    const body = {
-      criteria: {
-        property_type: 'apartment',
-        area_sqm: { min: '90', max: '170' },
-        price: { min: '1', max: '400000' },
-        sort_order: '5',
-        keywords: ['гараж'],
-        regions: [
-          'Стрелбище',
-          'Иван Вазов',
-          'Белите Брези',
-          'Манастирски ливади',
-          'Кръстова вада',
-          'Лозенец',
-          'Хиподрума',
-        ],
-      },
-      options: { headless: true },
-    };
-
+  runCrawl(criteria: Criteria): Observable<CrawlResponse> {
+    const body = { criteria, options: { headless: true } };
     return this.http.post<CrawlResponse>(this.apiUrl, body);
   }
 }

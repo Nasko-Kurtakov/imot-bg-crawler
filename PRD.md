@@ -55,18 +55,22 @@ The automation is intended to run daily and produce a list of fresh listings, sa
 
 ## 5. Functional Requirements
 
-| ID   | Description                                                                  |
-| ---- | ---------------------------------------------------------------------------- |
-| FR1  | Navigate to https://www.imot.bg                                              |
-| FR2  | Accept search criteria via config file                                       |
-| FR3  | Fill and submit the search form                                              |
-| FR4  | Load and scroll through all listings                                         |
-| FR5  | Identify and filter listings from **today**                                  |
-| FR6  | Extract title, price, location, date, and link                               |
-| FR7  | Export listings to a JSON or CSV file                                        |
-| FR8  | Create a node js server that accepts a post request with the search criteria |
-| FR9  | On request return a json with the results                                    |
-| FR10 | An Angular 20 app that consumes the server and displays the results          |
+| ID   | Description                                                                                              |
+| ---- | -------------------------------------------------------------------------------------------------------- |
+| FR1  | Navigate to https://www.imot.bg                                                                          |
+| FR2  | Accept search criteria via config file                                                                   |
+| FR3  | Fill and submit the search form                                                                          |
+| FR4  | Load and scroll through all listings                                                                     |
+| FR5  | Identify and filter listings from **today**                                                              |
+| FR6  | Extract title, price, location, date, and link                                                           |
+| FR7  | Export listings to a JSON or CSV file                                                                    |
+| FR8  | Create a node js server that accepts a post request with the search criteria                             |
+| FR9  | On request return a json with the results                                                                |
+| FR10 | An Angular 20 app that consumes the server and displays the results                                      |
+| FR11 | Preserve search results across navigation using a root-provided state store (Angular signals).           |
+| FR12 | Listing item shows a thumbnail image (when available) and a direct external link to the imot.bg listing. |
+| FR13 | Refactor UI list and item components to use a Flexbox-based layout.                                      |
+| FR14 | Component that has a form. The form is used for search criteria.                                         |
 
 ---
 

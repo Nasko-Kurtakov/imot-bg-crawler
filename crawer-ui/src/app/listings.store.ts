@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { CrawlService, Listing } from './crawl.service';
+import { CrawlService, Listing, Criteria } from './crawl.service';
 
 @Injectable({ providedIn: 'root' })
 export class ListingsStore {
@@ -11,13 +11,13 @@ export class ListingsStore {
   results = signal<Listing[]>([]);
   count = signal(0);
 
-  runCrawl() {
+  runCrawl(criteria: Criteria) {
     this.error.set(null);
     this.loading.set(true);
     this.results.set([]);
     this.count.set(0);
 
-    this.crawlService.runCrawl().subscribe({
+    this.crawlService.runCrawl(criteria).subscribe({
       next: (res) => {
         this.results.set(res.results || []);
         this.count.set(res.count || 0);

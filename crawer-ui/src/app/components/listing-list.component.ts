@@ -8,7 +8,7 @@ import { ListingItemComponent } from './listing-item.component';
   standalone: true,
   imports: [CommonModule, ListingItemComponent],
   template: `
-    @if(items?.length){
+    @if(items.length){
     <div class="results-list">
       @for(item of items; track $index){
       <ad-listing-item [listing]="item" />
