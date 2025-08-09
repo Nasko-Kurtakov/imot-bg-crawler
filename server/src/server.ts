@@ -1,12 +1,14 @@
 import express, { Request, Response, NextFunction } from "express";
 import { runCrawler, SearchCriteria, CrawlerOptions } from "./crawler";
 import "dotenv/config";
+import cors from "cors";
 
 // Schemas
 import { searchCriteriaSchema, optionsSchema } from "./schemas";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+app.use(cors());
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });

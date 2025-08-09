@@ -1,0 +1,24 @@
+<div class="container">
+  <h1>imot.bg Daily Listings</h1>
+  <p>Click the button to run the crawl and display today's results.</p>
+
+  <button (click)="runCrawl()" [disabled]="loading()">
+    {{ loading() ? "Running…" : "Run Crawl" }}
+  </button>
+  <div class="card" *ngIf="error()"><strong>Error:</strong> {{ error() }}</div>
+
+  <div class="card" *ngIf="!error()">
+    <div><strong>Total:</strong> {{ count() }}</div>
+    <div class="results-list">
+      <div class="item" *ngFor="let item of results()">
+        <div class="title">{{ item.title }}</div>
+        <div class="meta">
+          {{ item.location }} • {{ item.price }} • {{ item.date }}
+        </div>
+        <div class="desc">{{ item.description }}</div>
+        <div><a [href]="item.link" target="_blank" rel="noopener">Open</a></div>
+      </div>
+    </div>
+    <pre *ngIf="results().length === 0">No results yet.</pre>
+  </div>
+</div>
