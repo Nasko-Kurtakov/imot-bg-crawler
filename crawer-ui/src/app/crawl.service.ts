@@ -25,6 +25,7 @@ export interface Criteria {
   sort_order?: string;
   keywords?: string[];
   regions?: string[];
+  duration?: 'today' | 'yesterday' | 'last2h' | 'last6h' | 'last24h' | 'last48h';
 }
 
 @Injectable({ providedIn: 'root' })

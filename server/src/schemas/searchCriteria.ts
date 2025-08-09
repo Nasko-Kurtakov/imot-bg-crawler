@@ -7,6 +7,10 @@ export const searchCriteriaSchema = z.object({
   sort_order: z.string(),
   keywords: z.array(z.string()).default([]),
   regions: z.array(z.string()).default([]),
+  duration: z
+    .enum(["today", "yesterday", "last2h", "last6h", "last24h", "last48h"]) 
+    .optional()
+    .default("last48h"),
 });
 
 export type SearchCriteriaInput = z.infer<typeof searchCriteriaSchema>;

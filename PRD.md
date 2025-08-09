@@ -71,6 +71,7 @@ The automation is intended to run daily and produce a list of fresh listings, sa
 | FR12 | Listing item shows a thumbnail image (when available) and a direct external link to the imot.bg listing. |
 | FR13 | Refactor UI list and item components to use a Flexbox-based layout.                                      |
 | FR14 | Component that has a form. The form is used for search criteria.                                         |
+| FR15 | Give the user the ability to see listings uploaded yesterday, today, last 2h, last 6h, last              |
 
 ---
 

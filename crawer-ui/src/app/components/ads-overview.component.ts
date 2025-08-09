@@ -40,6 +40,17 @@ import { HttpClient } from '@angular/common/http';
             <mat-label>Sort</mat-label>
             <input matInput formControlName="sort_order" placeholder="5" />
           </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Duration</mat-label>
+            <mat-select formControlName="duration">
+              <mat-option value="today">Today</mat-option>
+              <mat-option value="yesterday">Yesterday</mat-option>
+              <mat-option value="last2h">Last 2 hours</mat-option>
+              <mat-option value="last6h">Last 6 hours</mat-option>
+              <mat-option value="last24h">Last 24 hours</mat-option>
+              <mat-option value="last48h">Last 48 hours</mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
         <div class="row">
           <mat-form-field appearance="fill">
@@ -93,8 +104,12 @@ import { HttpClient } from '@angular/common/http';
           <mat-form-field class="full" appearance="fill">
             <mat-label>Regions</mat-label>
             <mat-select formControlName="regions" multiple>
-              @for (r of regionOptions; track r) {
-              <mat-option [value]="r">{{ r }}</mat-option>
+              @for (g of regionGroups; track g.label) {
+                <mat-optgroup [label]="g.label">
+                  @for (r of g.items; track r) {
+                    <mat-option [value]="r">{{ r }}</mat-option>
+                  }
+                </mat-optgroup>
               }
             </mat-select>
           </mat-form-field>
@@ -179,9 +194,13 @@ export class AdsOverviewComponent implements OnInit {
     area_max: this.fb.nonNullable.control('170'),
     keywords: this.fb.nonNullable.control('гараж'),
     regions: this.fb.nonNullable.control<string[]>([]),
+    duration: this.fb.nonNullable.control<
+      'today' | 'yesterday' | 'last2h' | 'last6h' | 'last24h' | 'last48h'
+    >('last48h'),
   });
 
   regionOptions: string[] = [];
+  regionGroups: { label: string; items: string[] }[] = [];
 
   ngOnInit(): void {
     // Restore previously selected regions from localStorage (if any)
@@ -203,13 +222,14 @@ export class AdsOverviewComponent implements OnInit {
       .get<Record<string, Record<string, string>>>('/data/imot-bg-regions.json')
       .subscribe({
         next: (data) => {
-          const opts: string[] = [];
-          for (const inner of Object.values(data)) {
-            for (const name of Object.keys(inner)) {
-              opts.push(name);
-            }
-          }
-          this.regionOptions = opts.sort((a, b) => a.localeCompare(b));
+          const groups = Object.entries(data)
+            .map(([label, inner]) => ({
+              label,
+              items: Object.keys(inner).sort((a, b) => a.localeCompare(b, 'bg')),
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'bg'));
+          this.regionGroups = groups;
+          this.regionOptions = groups.flatMap((g) => g.items);
         },
         error: (err) => {
           console.error('Failed to load regions JSON', err);
@@ -245,6 +265,7 @@ export class AdsOverviewComponent implements OnInit {
       },
       keywords: this.csvToArray(v.keywords),
       regions: v.regions && v.regions.length ? v.regions : undefined,
+      duration: v.duration,
     } as const;
 
     // Persist selected regions for usability

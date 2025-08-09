@@ -20,6 +20,13 @@ export type SearchCriteria = {
   sort_order: string; // matches site select values
   keywords: string[];
   regions: string[];
+  duration?:
+    | "today"
+    | "yesterday"
+    | "last2h"
+    | "last6h"
+    | "last24h"
+    | "last48h";
 };
 
 export type CrawlerOptions = {
@@ -63,7 +70,7 @@ export async function runCrawler(
     if (searchButton) {
       await searchButton.click();
     }
-    await page.waitForTimeout(5000); // waits 5 seconds which should be enough for the page with results to load
+    await page.waitForTimeout(2000); // waits 2 seconds which should be enough for the page with results to load
 
     //for each page of the pages
 
@@ -87,7 +94,7 @@ export async function runCrawler(
       console.log("Processing page: ", i + 1);
       await processListings(page, searchCriteria, results, saveCsv);
       await navigateToPage(page, i);
-      await page.waitForTimeout(1000); // waits 1 second which should be enough for the page with results to load
+      await page.waitForTimeout(500); // waits 0.5 seconds which should be enough for the page with results to load
       i++;
     } while (i < totalPagesCount);
 
@@ -192,7 +199,7 @@ async function selectRegions(page: Page, searchCriteria: SearchCriteria) {
 
 async function processListings(
   page: Page,
-  _searchCriteria: SearchCriteria,
+  searchCriteria: SearchCriteria,
   results: Array<{
     title: string;
     price: string;
@@ -222,7 +229,7 @@ async function processListings(
     console.log(`Found ${listingUrls.length} listing URLs on the page.`);
 
     // Process each listing URL sequentially
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < listingUrls.length; i++) {
       try {
         const url = listingUrls[i];
         if (!url) {
@@ -237,7 +244,11 @@ async function processListings(
         // Navigate directly to the listing URL
         await page.goto(url);
 
-        const listing = await checkListingInfo(page, saveCsv);
+        const listing = await checkListingInfo(
+          page,
+          searchCriteria.duration,
+          saveCsv
+        );
         if (listing) {
           results.push(normalizeListing(listing));
         }
@@ -322,7 +333,11 @@ async function extractAndWriteListing(page: Page, saveCsv: boolean) {
   }
 }
 
-async function checkListingInfo(page: Page, saveCsv: boolean) {
+async function checkListingInfo(
+  page: Page,
+  duration: SearchCriteria["duration"] | undefined,
+  saveCsv: boolean
+) {
   try {
     console.log("Checking listing info");
     const dateEls = await page.$$(".adPrice .info div");
@@ -330,32 +345,32 @@ async function checkListingInfo(page: Page, saveCsv: boolean) {
 
     let parsedDate: Date | null = null;
     if (dateText) {
-      parsedDate = parseBulgarianDate(dateText);
+      parsedDate = parseBulgarianDateTime(dateText);
     }
 
-    // Compare with current time; proceed if updated/published within last 2 days
     const NOW = new Date();
-    if (parsedDate) {
-      const diffMs = NOW.getTime() - parsedDate.getTime();
-      const diffDays = diffMs / (1000 * 60 * 60 * 24);
-      if (diffDays <= 2 && diffDays >= 0) {
-        return await extractAndWriteListing(page, saveCsv);
-      }
+    if (
+      parsedDate &&
+      isWithinDuration(parsedDate, NOW, duration ?? "last48h")
+    ) {
+      return await extractAndWriteListing(page, saveCsv);
     }
   } catch (error) {
     console.error("Error checking listing info:", error);
   }
   return null;
 }
-// Utility to parse Bulgarian date strings like "Коригирана в 16:02 на 15 юли, 2025 год."
-function parseBulgarianDate(dateStr: string): Date | null {
-  const regex =
+// Utility to parse Bulgarian date strings like
+// "Коригирана в 16:02 на 15 юли, 2025 год." or "Публикувана на 15 юли, 2025 год."
+function parseBulgarianDateTime(dateStr: string): Date | null {
+  const timeRegex = /(\d{1,2}):(\d{2})/;
+  const dateRegex =
     /(\d{1,2})\s(януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември),\s(\d{4})/i;
-  const match = dateStr.match(regex);
-  if (!match) return null;
-  const day = parseInt(match[1], 10);
-  const monthBg = match[2].toLowerCase();
-  const year = parseInt(match[3], 10);
+  const dateMatch = dateStr.match(dateRegex);
+  if (!dateMatch) return null;
+  const day = parseInt(dateMatch[1], 10);
+  const monthBg = dateMatch[2].toLowerCase();
+  const year = parseInt(dateMatch[3], 10);
   const bgMonths = [
     "януари",
     "февруари",
@@ -372,7 +387,44 @@ function parseBulgarianDate(dateStr: string): Date | null {
   ];
   const month = bgMonths.indexOf(monthBg);
   if (month === -1) return null;
-  return new Date(year, month, day);
+  const timeMatch = dateStr.match(timeRegex);
+  const hours = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+  const minutes = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+  return new Date(year, month, day, hours, minutes, 0, 0);
+}
+
+function isWithinDuration(
+  date: Date,
+  now: Date,
+  duration: NonNullable<SearchCriteria["duration"]>
+): boolean {
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 0) return false; // future or invalid
+
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  switch (duration) {
+    case "today": {
+      const todayStart = startOfDay(now);
+      return date >= todayStart;
+    }
+    case "yesterday": {
+      const yesterdayStart = new Date(
+        startOfDay(now).getTime() - 24 * 60 * 60 * 1000
+      );
+      const todayStart = startOfDay(now);
+      return date >= yesterdayStart && date < todayStart;
+    }
+    case "last2h":
+      return diffMs <= 2 * 60 * 60 * 1000;
+    case "last6h":
+      return diffMs <= 6 * 60 * 60 * 1000;
+    case "last24h":
+      return diffMs <= 24 * 60 * 60 * 1000;
+    case "last48h":
+    default:
+      return diffMs <= 48 * 60 * 60 * 1000;
+  }
 }
 
 async function navigateToPage(page: Page, pageNumber: number) {
