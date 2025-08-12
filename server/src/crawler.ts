@@ -7,7 +7,7 @@ import { promises as fs } from "fs";
 import * as path from "path";
 
 // Configuration
-const TARGET_URL = process.env.TARGET_URL || "https://www.imot.bg";
+const TARGET_URL = process.env.TARGET_URL || "https://www.imot.bg/search/prodazhbi/grad-sofiya";
 const TODAY = moment().format("YYYY-MM-DD");
 
 // Here we fill in the form with the search criteria mapping

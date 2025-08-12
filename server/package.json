@@ -7,7 +7,8 @@
     "test-debug": "playwright test --ui --project chromium",
     "test": "playwright test",
     "crawl": "ts-node -e \"(async()=>{const {runCrawler}=await import('./src/crawler');const criteria=require('./search.json');await runCrawler(criteria,{headless:false});})();\"",
-    "server": "ts-node src/server.ts"
+    "server": "ts-node src/server.ts",
+    "prepare": "npx playwright install"
   },
   "dependencies": {
     "@playwright/test": "^1.54.2",
