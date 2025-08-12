@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { runCrawler, SearchCriteria, CrawlerOptions } from "./crawler";
 import "dotenv/config";
 import cors from "cors";
+import path from "path";
 
 // Schemas
 import { searchCriteriaSchema, optionsSchema } from "./schemas";
@@ -52,7 +53,17 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
+// ---- Static UI hosting (Angular dist) ----
+// Serve the Angular production build so UI and API share the same origin (port 3000)
+const uiDist = path.join(__dirname, "..", "..", "crawer-ui", "dist", "crawer-ui", "browser");
+app.use(express.static(uiDist));
+
+// SPA fallback: let client-side router handle all non-API routes
+app.get("*", (_req: Request, res: Response) => {
+  res.sendFile(path.join(uiDist, "index.html"));
+});
+
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });
